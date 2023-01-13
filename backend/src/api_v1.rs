@@ -1,9 +1,9 @@
 use crate::appconfig;
-use sqlite::State;
 use reqwest;
 use reqwest::header::*;
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
+use sqlite::State;
 use std::env;
 use uuid::Uuid;
 
@@ -30,13 +30,7 @@ impl Default for GPT {
 #[serde(crate = "rocket::serde")]
 pub struct GptPrompt {
     prompt: String,
-}
-impl Default for GptPrompt {
-    fn default() -> GptPrompt {
-        GptPrompt {
-            prompt: String::new(),
-        }
-    }
+    key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -62,13 +56,13 @@ pub struct AddKey {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Keys {
     key: String,
-    tokens_left: String
+    tokens_left: String,
 }
 impl Default for Keys {
     fn default() -> Keys {
         Keys {
             key: String::new(),
-            tokens_left: String::new()
+            tokens_left: String::new(),
         }
     }
 }
@@ -78,8 +72,51 @@ pub fn test(text: String) -> String {
     format!("This is your text: {}", text)
 }
 
+pub fn query_key(key: String) -> String {
+    appconfig::check_dbfile(appconfig::DATABASE_FILE);
+
+    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
+
+    let mut result: String = "".to_string();
+
+    let query = format!("SELECT * FROM keys WHERE id = '{}'", key);
+
+    let mut statement = match conn.prepare(query) {
+        Ok(statement) => statement,
+        Err(e) => return format!("Problem running query: {:?}", e),
+    };
+
+    while let State::Row = statement.next().unwrap() {
+        let key = statement.read::<String>(0).unwrap();
+        let tokens_left = statement.read::<String>(1).unwrap();
+        let mut tokens_int: i32 = tokens_left.parse().unwrap();
+        if tokens_int == 0 {
+            result += "No tokens left";
+            return result;
+        }
+        tokens_int -= 1;
+        let query_update = format!("UPDATE keys SET left = {} WHERE id = '{}'", tokens_int, key);
+        conn.execute(query_update).unwrap();
+        result += format!("Name: {}, Tokens Left: {}", &key, &tokens_int).as_str();
+    }
+
+    if result == "" {
+        result += "No records found";
+    }
+
+    result
+}
+
 #[post("/v1/req_gpt", format = "json", data = "<gpt_prompt>")]
 pub async fn send_rq(gpt_prompt: Json<GptPrompt>) -> String {
+    let key_to_check = gpt_prompt.key.to_owned();
+    let key_check = query_key(key_to_check);
+
+    match key_check.as_str() {
+        "No records found" | "No tokens left" => return key_check,
+        _ => ()
+    }
+
     let mut gpt_instance = GPT::default();
     gpt_instance.prompt = gpt_prompt.prompt.to_owned();
     let client = reqwest::Client::new();
@@ -105,7 +142,7 @@ pub async fn send_rq(gpt_prompt: Json<GptPrompt>) -> String {
 #[post("/v1/add_key", format = "json", data = "<add_key>")]
 pub fn create_key(add_key: Json<AddKey>) -> String {
     let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
-    
+
     let admin_key = add_key.password.to_owned();
     let api_key: String = env::var("ADMIN_KEY").unwrap();
 
@@ -115,8 +152,7 @@ pub fn create_key(add_key: Json<AddKey>) -> String {
     let id = Uuid::new_v4();
 
     let result: String = "SUCCESS".to_string();
-    let _statement = match conn.execute(format!(
-        "INSERT INTO keys values ('{}', '{}')", id, 10 )) {
+    let _statement = match conn.execute(format!("INSERT INTO keys values ('{}', '{}')", id, 10)) {
         Ok(statement) => statement,
         Err(e) => return format!("Problem running query: {:?}", e),
     };
@@ -128,17 +164,18 @@ pub fn create_key(add_key: Json<AddKey>) -> String {
 pub fn query_all(admin_key: Json<AddKey>) -> Json<Vec<Keys>> {
     appconfig::check_dbfile(appconfig::DATABASE_FILE);
 
-    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!"); //we can unwrap we checked the file exists
+    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
     let admin_key = admin_key.password.to_owned();
     let api_key: String = env::var("ADMIN_KEY").unwrap();
     let mut result: Vec<Keys> = Vec::new();
 
     if admin_key != api_key {
-        result.push(Keys { key: "Wrong Admin key!".to_string(), tokens_left: "0".to_string() });
+        result.push(Keys {
+            key: "Wrong Admin key!".to_string(),
+            tokens_left: "0".to_string(),
+        });
         return Json(result);
     }
-
-    
 
     let query = "SELECT * FROM keys";
 
