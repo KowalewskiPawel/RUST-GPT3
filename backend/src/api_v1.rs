@@ -143,10 +143,10 @@ pub async fn send_rq(gpt_prompt: Json<GptPrompt>) -> String {
 pub fn create_key(add_key: Json<AddKey>) -> String {
     let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
 
-    let admin_key = add_key.password.to_owned();
-    let api_key: String = env::var("ADMIN_KEY").unwrap();
+    let passed_key = add_key.password.to_owned();
+    let admin_key: String = env::var("ADMIN_KEY").unwrap();
 
-    if admin_key != api_key {
+    if admin_key != passed_key {
         return "Wrong admin key!".to_string();
     }
     let id = Uuid::new_v4();
@@ -165,11 +165,11 @@ pub fn query_all(admin_key: Json<AddKey>) -> Json<Vec<Keys>> {
     appconfig::check_dbfile(appconfig::DATABASE_FILE);
 
     let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
-    let admin_key = admin_key.password.to_owned();
-    let api_key: String = env::var("ADMIN_KEY").unwrap();
+    let passed_key = admin_key.password.to_owned();
+    let admin_key: String = env::var("ADMIN_KEY").unwrap();
     let mut result: Vec<Keys> = Vec::new();
 
-    if admin_key != api_key {
+    if admin_key != passed_key {
         result.push(Keys {
             key: "Wrong Admin key!".to_string(),
             tokens_left: "0".to_string(),
