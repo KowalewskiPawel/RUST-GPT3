@@ -47,8 +47,7 @@ fn app() -> Html {
             <input ref = {input_key_ref} type="text"/>
             <p>{"password"}</p>
             <input ref = {input_prompt_ref} type="text"/>
-            <button onclick={onclick}>{"request"}</button>
-            <requestResult request_result={*_request_result} />
+            <button onclick={onclick}>{"request"}</button
         </div>
     }
 }
