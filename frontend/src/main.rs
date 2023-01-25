@@ -66,11 +66,13 @@ fn app() -> Html {
     html!{
         <div>
             <h2>{"Key"}</h2>
-            <input ref = {input_key_ref} type="text"/>
-            <h2>{"Prompt"}</h2>
-            <input ref = {input_prompt_ref} type="text"/>
-            <button onclick={onclick}>{"request"}</button>
-            <h3>{"Result: "}</h3>
+            <input class="input-box" ref = {input_key_ref} type="text"/>
+            <h2>{"Question"}</h2>
+            <input class="input-box"  ref = {input_prompt_ref} type="text"/>
+            <div>
+            <button class="ask-button" onclick={onclick}>{"Ask AI"}</button>
+            </div>
+            <h3>{"Answer from AI: "}</h3>
             <p>{format!("{:?}", *_request_result)}</p>
         </div>
     }
