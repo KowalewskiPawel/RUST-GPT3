@@ -3,19 +3,7 @@ use web_sys::HtmlInputElement;
 use gloo_net::http::{Request, Headers};
 use serde::{Deserialize, Serialize};
 use js_sys::JsString;
-
-#[derive(PartialEq, Debug, Clone)]
-struct InputPrompt {
-    key : String,
-    prompt : String    
-}
-
-#[derive(Properties, PartialEq)]
-struct RequestResultProps {
-    request_result: String
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RequestGpt {
     pub prompt: String,
     pub key: String,
@@ -39,7 +27,7 @@ fn app() -> Html {
     let input_key = input_key_ref.clone();
     let input_prompt = input_prompt_ref.clone();
     let request_result = use_state(|| "No result".to_string());
-    let _request_result = request_result.clone();
+    let result = request_result.clone();
     let onclick = Callback::from(move |_| {
             let key = input_key.cast::<HtmlInputElement>().unwrap().value();
             let prompt = input_prompt.cast::<HtmlInputElement>().unwrap().value();
@@ -73,7 +61,7 @@ fn app() -> Html {
             <button class="ask-button" onclick={onclick}>{"Ask AI"}</button>
             </div>
             <h3>{"Answer from AI: "}</h3>
-            <p>{format!("{:?}", *_request_result)}</p>
+            <p>{format!("{:?}", *result)}</p>
         </div>
     }
 }
