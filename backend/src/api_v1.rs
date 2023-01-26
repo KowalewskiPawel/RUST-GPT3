@@ -1,4 +1,4 @@
-use crate::appconfig;
+use crate::db_config;
 use reqwest;
 use reqwest::header::*;
 use rocket::serde::json::Json;
@@ -73,9 +73,9 @@ pub fn test(text: String) -> String {
 }
 
 pub fn query_key(key: String) -> String {
-    appconfig::check_dbfile(appconfig::DATABASE_FILE);
+    db_config::check_dbfile(db_config::DATABASE_FILE);
 
-    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
+    let conn = sqlite::open(db_config::DATABASE_FILE).expect("Database not readable!");
 
     let mut result: String = "".to_string();
 
@@ -141,7 +141,7 @@ pub async fn send_rq(gpt_prompt: Json<GptPrompt>) -> String {
 
 #[post("/v1/add_key", format = "json", data = "<add_key>")]
 pub fn create_key(add_key: Json<AddKey>) -> String {
-    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
+    let conn = sqlite::open(db_config::DATABASE_FILE).expect("Database not readable!");
 
     let passed_key = add_key.password.to_owned();
     let admin_key: String = env::var("ADMIN_KEY").unwrap();
@@ -162,9 +162,9 @@ pub fn create_key(add_key: Json<AddKey>) -> String {
 
 #[get("/v1/query_all", format = "json", data = "<admin_key>")]
 pub fn query_all(admin_key: Json<AddKey>) -> Json<Vec<Keys>> {
-    appconfig::check_dbfile(appconfig::DATABASE_FILE);
+    db_config::check_dbfile(db_config::DATABASE_FILE);
 
-    let conn = sqlite::open(appconfig::DATABASE_FILE).expect("Database not readable!");
+    let conn = sqlite::open(db_config::DATABASE_FILE).expect("Database not readable!");
     let passed_key = admin_key.password.to_owned();
     let admin_key: String = env::var("ADMIN_KEY").unwrap();
     let mut result: Vec<Keys> = Vec::new();
